@@ -1,5 +1,6 @@
 package atomixsoft.dev.platform;
 
+import atomixsoft.dev.input.Input;
 import atomixsoft.dev.util.WinProps;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
@@ -20,6 +21,8 @@ public class Window {
 
     private int m_FramebufferWidth;
     private int m_FramebufferHeight;
+
+    private  boolean m_CursorCaptured;
 
     public Window(WinProps properties) {
         if (properties == null)
@@ -123,9 +126,17 @@ public class Window {
         });
 
         glfwSetKeyCallback(m_Handle, (window, key, scancode, action, mods) -> {
+            Input.handleKey(key, action);
+
             if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
                 requestClose();
+
+            if(key == GLFW_KEY_F1 && action == GLFW_PRESS)
+                setCursorCaptured(!m_CursorCaptured);
         });
+
+        glfwSetCursorPosCallback(m_Handle, (window, xPos, yPos) -> Input.handleMouseMove(xPos, yPos));
+        glfwSetMouseButtonCallback(m_Handle, (window, button, action, mods) -> Input.handleMouseButton(button, action));
     }
 
     private void validate() {
@@ -149,6 +160,7 @@ public class Window {
 
         glfwFreeCallbacks(m_Handle);
         glfwDestroyWindow(m_Handle);
+        m_CursorCaptured = false;
 
         m_Handle = MemoryUtil.NULL;
         m_FramebufferWidth = 0;
@@ -169,6 +181,21 @@ public class Window {
         return glfwWindowShouldClose(m_Handle);
     }
 
+    public void setCursorCaptured(boolean captured) {
+        validate();
+
+        if(m_CursorCaptured == captured)
+            return;
+
+        m_CursorCaptured = captured;
+        glfwSetInputMode(m_Handle, GLFW_CURSOR, captured ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+
+        if(glfwRawMouseMotionSupported())
+            glfwSetInputMode(m_Handle, GLFW_RAW_MOUSE_MOTION, captured ? GLFW_TRUE : GLFW_FALSE);
+
+        Input.resetMousePosition();
+    }
+
     public WinProps getProperties() {
         return m_Properties;
     }
@@ -179,6 +206,10 @@ public class Window {
 
     public int getFramebufferHeight() {
         return m_FramebufferHeight;
+    }
+
+    public boolean isCursorCaptured() {
+        return m_CursorCaptured;
     }
 
 }

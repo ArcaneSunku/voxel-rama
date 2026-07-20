@@ -1,5 +1,6 @@
 package atomixsoft.dev;
 
+import atomixsoft.dev.input.Input;
 import atomixsoft.dev.platform.Window;
 import atomixsoft.dev.util.Timer;
 import atomixsoft.dev.util.WinProps;
@@ -45,12 +46,14 @@ public final class Application {
         m_ErrorCallback = GLFWErrorCallback.createPrint(System.err);
         m_ErrorCallback.set();
 
-        glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+        if(glfwPlatformSupported(GLFW_PLATFORM_WAYLAND))
+            glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
 
         if(!glfwInit())
             throw new IllegalStateException("Failed to initialize GLFW.");
 
         m_GlfwInitialized = true;
+        Input.initialize();
 
         WinProps props = new WinProps("Voxel-Rama", 1280, 720, true);
         m_Window = new Window(props);
@@ -74,7 +77,11 @@ public final class Application {
                 frameTime = MAX_FRAME_TIME;
 
             accumulator += frameTime;
+
+            Input.beginFrame();
             m_Window.pollEvents();
+
+            m_Game.processInput(frameTime);
 
             while(accumulator >= FIXED_TIMESTEP) {
                 m_Game.update(FIXED_TIMESTEP);
@@ -90,7 +97,9 @@ public final class Application {
 
     private void dispose() {
         m_Running = false;
+
         m_Game.dispose();
+        Input.clear();
 
         if (m_Window != null) {
             m_Window.dispose();
