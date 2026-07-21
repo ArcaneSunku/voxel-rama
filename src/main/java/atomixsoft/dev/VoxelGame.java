@@ -3,17 +3,25 @@ package atomixsoft.dev;
 import atomixsoft.dev.graphics.Camera;
 import atomixsoft.dev.graphics.CameraController;
 import atomixsoft.dev.graphics.Shader;
+
 import atomixsoft.dev.input.Input;
 import atomixsoft.dev.platform.Window;
+
+import atomixsoft.dev.world.World;
+import atomixsoft.dev.world.block.Blocks;
+import atomixsoft.dev.world.chunk.*;
+import atomixsoft.dev.world.chunk.mesh.ChunkMeshData;
+import atomixsoft.dev.world.chunk.mesh.ChunkMesher;
+import atomixsoft.dev.world.render.ChunkModel;
+import atomixsoft.dev.world.render.WorldRenderer;
 import org.joml.Matrix4f;
 
-import static org.lwjgl.glfw.GLFW.GLFW_KEY_SPACE;
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT;
+import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT;
 import static org.lwjgl.opengl.GL11.*;
-import static org.lwjgl.opengl.GL15.*;
-import static org.lwjgl.opengl.GL20.glEnableVertexAttribArray;
-import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
-import static org.lwjgl.opengl.GL30.*;
 
 public final class VoxelGame {
 
@@ -23,7 +31,8 @@ public final class VoxelGame {
     private Camera m_Camera;
     private CameraController m_CamController;
 
-    private int m_VAO, m_VBO, m_EBO;
+    private World m_World;
+    private WorldRenderer m_Renderer;
 
     private boolean m_Initialized;
 
@@ -35,60 +44,60 @@ public final class VoxelGame {
             throw new IllegalArgumentException("Window cannot be null!");
 
         m_Window = window;
-        m_Shader = new Shader("shaders/triangle.vert", "shaders/triangle.frag");
+        m_Window.setCursorCaptured(true);
 
-        initTriangle();
+        Blocks.Initialize();
 
         m_Camera = new Camera(65.0f, 0.01f, 1000.0f);
-        m_Camera.setPosition(0.0f, 0.0f, 3.0f);
+        m_Camera.setPosition(8.0f, 8.0f, 24.0f);
 
         m_Camera.updateProjection(window.getFramebufferWidth(), window.getFramebufferHeight());
         m_Camera.updateView();
 
         m_CamController = new CameraController(m_Camera);
-        m_Window.setCursorCaptured(true);
+
+        m_Shader = new Shader("shaders/triangle.vert", "shaders/triangle.frag");
+
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+
+        glEnable(GL_DEPTH_TEST);
+
+        initializeWorld();
 
         m_Initialized = true;
         IO.println("Voxel-Rama initialized!");
     }
 
-    private void initTriangle() {
-        m_VAO = glGenVertexArrays();
-        glBindVertexArray(m_VAO);
+    private void initializeWorld() {
+        m_World = new World();
 
-        float[] vertices = new float[] {
-                // Position(x,y,z)  Color(r,g,b)
-                -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
-                 0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
-                 0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f,
-                -0.5f,  0.5f, 0.0f, 0.2f, 0.5f, 1.0f
-        };
+        createTestChunk(new ChunkPosition(1, 0, 0));
+        createTestChunk(new ChunkPosition(0, 0, 1));
 
-        m_VBO = glGenBuffers();
-        glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
-        glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
+        createTestChunk(new ChunkPosition(0, 0, 0));
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, false, 6 * Float.BYTES, 0L);
-        glEnableVertexAttribArray(0);
+        createTestChunk(new ChunkPosition(-1, 0, 0));
+        createTestChunk(new ChunkPosition(0, 0, -1));
 
-        glVertexAttribPointer(1, 3, GL_FLOAT, false, 6 * Float.BYTES, 3L * Float.BYTES);
-        glEnableVertexAttribArray(1);
+        m_Renderer = new WorldRenderer(m_World);
+        m_Renderer.update();
+    }
 
-        int[] indices = new int[] {
-                0, 1, 2,
-                2, 3, 0
-        };
+    private void createTestChunk(ChunkPosition position) {
+        m_World.createChunk(position);
 
-        m_EBO = glGenBuffers();
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices, GL_STATIC_DRAW);
+        int worldOriginX = position.getWorldBlockOriginX();
+        int worldOriginY = position.getWorldBlockOriginY();
+        int worldOriginZ = position.getWorldBlockOriginZ();
 
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
+        for (int z = 0; z < Chunk.SIZE; z++) {
+            for (int x = 0; x < Chunk.SIZE; x++) {
+                m_World.setBlock(worldOriginX + x, worldOriginY, worldOriginZ + z, Blocks.STONE);
+                m_World.setBlock(worldOriginX + x, worldOriginY + 1, worldOriginZ + z, Blocks.DIRT);
+                m_World.setBlock(worldOriginX + x, worldOriginY + 2, worldOriginZ + z, Blocks.GRASS);
+            }
+        }
     }
 
     public void processInput(double delta) {
@@ -102,60 +111,41 @@ public final class VoxelGame {
 
     public void update(double delta) {
         validate();
-
-        /*
-         * Game simulation will be updated here.
-         *
-         * delta is currently 1.0 / 60.0, meaning this method
-         * runs using a consistent simulation step of approximately
-         * 0.01666 seconds.
-         */
+        m_Renderer.update();
     }
 
     public void render(double alpha) {
         validate();
 
-        /*
-         * alpha will later be used to smoothly render
-         * objects between their previous and current simulation states.
-         */
-
         glClearColor(0.08f, 0.11f, 0.16f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        m_Shader.bind();
-
-        m_Shader.setUniform("u_Model", new Matrix4f());
-        m_Shader.setUniform("u_View", m_Camera.getViewMatrix());
-        m_Shader.setUniform("u_Projection", m_Camera.getProjectionMatrix());
-
-        glBindVertexArray(m_VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0L);
-        glBindVertexArray(0);
-
-        m_Shader.unbind();
+        m_Renderer.render(m_Shader, m_Camera);
     }
 
     public void dispose() {
         if(!m_Initialized)
             return;
 
-        /*
-         * Game-owned OpenGL resources will be destroyed here before
-         * Application destroys the window and OpenGL context.
-         */
-
-        glDeleteBuffers(m_EBO);
-        glDeleteBuffers(m_VBO);
-        glDeleteVertexArrays(m_VAO);
-
         if(m_Shader != null)
             m_Shader.dispose();
 
         m_Window = null;
         m_Initialized = false;
+        m_CamController = null;
+
+        disposeWorld();
+        Blocks.Dispose();
 
         IO.println("Voxel-Rama disposed!");
+    }
+
+    private void disposeWorld() {
+        m_Renderer.dispose();
+        m_Renderer = null;
+
+        m_World.clear();
+        m_World = null;
     }
 
     private void validate() {
