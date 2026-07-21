@@ -3,18 +3,24 @@ package atomixsoft.dev.world.gen;
 import atomixsoft.dev.noise.NoiseSampler2D;
 import atomixsoft.dev.noise.NoiseSamplers;
 import atomixsoft.dev.world.World;
+import atomixsoft.dev.world.WorldProperties;
 import atomixsoft.dev.world.block.Block;
 import atomixsoft.dev.world.block.Blocks;
 import atomixsoft.dev.world.chunk.Chunk;
 import atomixsoft.dev.world.chunk.ChunkPosition;
+import atomixsoft.dev.world.gen.shape.TerrainShape;
+import atomixsoft.dev.world.gen.shape.TerrainShapeFactory;
 
 public final class NoiseTerrainGenerator implements TerrainGenerator {
 
     private final long m_Seed;
     private final TerrainGenerationSettings m_Settings;
 
-    private final NoiseSampler2D m_HeightNoise;
-    private final NoiseSampler2D m_DetailNoise;
+    private final TerrainShape m_TerrainShape;
+
+    public NoiseTerrainGenerator(WorldProperties properties) {
+        this(requireProperties(properties).seedValue(), TerrainGenerationPresets.Get(properties.terrainPreset()));
+    }
 
     public NoiseTerrainGenerator(long seed) {
         this(seed, TerrainGenerationPresets.ROLLING_HILLS);
@@ -27,20 +33,7 @@ public final class NoiseTerrainGenerator implements TerrainGenerator {
         m_Seed = seed;
         m_Settings = settings;
 
-        m_HeightNoise = NoiseSamplers.CreateTerrainHeight(deriveIntSeed(seed, 0x68BC21EBL), settings.terrainNoise());
-        m_DetailNoise = NoiseSamplers.CreateTerrainDetail(deriveIntSeed(seed, 0x02E5BE93L), settings.detailNoise());
-    }
-
-    private static int deriveIntSeed(long worldSeed, long salt) {
-        long value = worldSeed ^ salt;
-
-        value ^= value >>> 33;
-        value *= 0xFF51AFD7ED558CCDL;
-        value ^= value >>> 33;
-        value *= 0xC4CEB9FE1A85EC53L;
-        value ^= value >>> 33;
-
-        return Long.hashCode(value);
+        m_TerrainShape = TerrainShapeFactory.Create(seed, settings);
     }
 
     @Override
@@ -77,13 +70,7 @@ public final class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     public int calculateSurfaceHeight(int worldX, int worldZ) {
-        float terrainNoise = m_HeightNoise.sample(worldX, worldZ);
-        float detailNoise = m_DetailNoise.sample(worldX, worldZ);
-
-        int terrainHeight = Math.round(terrainNoise * m_Settings.terrainHeightRange());
-        int detailHeight = Math.round(detailNoise * m_Settings.detailHeightRange());
-
-        return m_Settings.baseHeight() + terrainHeight + detailHeight;
+        return m_TerrainShape.calculateSurfaceHeight(worldX, worldZ);
     }
 
     public long getSeed() {
@@ -114,6 +101,13 @@ public final class NoiseTerrainGenerator implements TerrainGenerator {
             return Blocks.DIRT;
 
         return Blocks.STONE;
+    }
+
+    private static WorldProperties requireProperties(WorldProperties properties) {
+        if (properties == null)
+            throw new IllegalArgumentException("World properties cannot be null.");
+
+        return properties;
     }
 
 }

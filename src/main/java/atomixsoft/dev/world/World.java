@@ -14,12 +14,14 @@ import java.util.Map;
 public class World {
 
     private final Map<ChunkPosition, Chunk> m_Chunks;
+    private final WorldProperties m_WorldProperties;
 
-    public World() {
+    public World(WorldProperties properties) {
         if(!Blocks.IsInitialized())
             throw new IllegalStateException("Blocks must be initialized before creating a World.");
 
         m_Chunks = new HashMap<>();
+        m_WorldProperties = properties;
     }
 
     public Chunk createChunk(int x, int y, int z) {
@@ -38,6 +40,18 @@ public class World {
 
         markNeighborMeshesDirty(position);
         return chunk;
+    }
+
+    public void clear() {
+        m_Chunks.clear();
+    }
+
+    public WorldProperties getProperties() {
+        return m_WorldProperties;
+    }
+
+    public long getSeed() {
+        return m_WorldProperties.seedValue();
     }
 
     public static ChunkPosition getChunkPosition(int worldX, int worldY, int worldZ) {
@@ -162,10 +176,6 @@ public class World {
 
         chunk.setBlockId(localX, localY, localZ, blockId);
         markBoundaryNeighborsDirty(chunkPosition, localX, localY, localZ);
-    }
-
-    public void clear() {
-        m_Chunks.clear();
     }
 
     private void markBoundaryNeighborsDirty(ChunkPosition position, int localX, int localY, int localZ) {

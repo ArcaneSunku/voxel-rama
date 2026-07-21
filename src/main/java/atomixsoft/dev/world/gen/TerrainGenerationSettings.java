@@ -1,11 +1,17 @@
 package atomixsoft.dev.world.gen;
 
 import atomixsoft.dev.noise.FractalNoiseSettings;
+import atomixsoft.dev.world.gen.shape.TerrainShapeType;
 
-public record TerrainGenerationSettings(int baseHeight, int terrainHeightRange, int detailHeightRange, int dirtDepth,
-                                        FractalNoiseSettings terrainNoise, FractalNoiseSettings detailNoise) {
+public record TerrainGenerationSettings(TerrainShapeType terrainShape, int baseHeight,
+                                        int terrainHeightRange, int detailHeightRange, int dirtDepth,
+                                        FractalNoiseSettings terrainNoise, FractalNoiseSettings detailNoise,
+                                        FractalNoiseSettings blendNoise) {
 
     public TerrainGenerationSettings {
+        if (terrainShape == null)
+            throw new IllegalArgumentException("TerrainShape cannot be null.");
+
         if (terrainHeightRange < 0)
             throw new IllegalArgumentException("Terrain height range cannot be negative.");
 
@@ -20,6 +26,9 @@ public record TerrainGenerationSettings(int baseHeight, int terrainHeightRange, 
 
         if (detailNoise == null)
             throw new IllegalArgumentException("Detail noise settings cannot be null.");
+
+        if (blendNoise == null)
+            throw new IllegalArgumentException("Blend noise settings cannot be null.");
     }
 
     public int minimumSurfaceHeight() {

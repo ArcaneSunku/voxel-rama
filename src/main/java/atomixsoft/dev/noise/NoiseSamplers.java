@@ -19,4 +19,11 @@ public final class NoiseSamplers {
         return new FastSampler2D(seed, FastNoiseLite.NoiseType.OpenSimplex2S, FastNoiseLite.FractalType.FBm, settings.frequency(), settings.octaves(), settings.lacunarity(), settings.gain());
     }
 
+    public static NoiseSampler2D CreateTerrainBlend(int seed, FractalNoiseSettings settings) {
+        if (settings == null)
+            throw new IllegalArgumentException("Noise settings cannot be null.");
+
+        return new FastSampler2D(seed, FastNoiseLite.NoiseType.OpenSimplex2, FastNoiseLite.FractalType.FBm, settings.frequency(), settings.octaves(), settings.lacunarity(), settings.gain());
+    }
+
 }

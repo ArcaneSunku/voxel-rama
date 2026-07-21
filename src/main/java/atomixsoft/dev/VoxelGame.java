@@ -8,10 +8,13 @@ import atomixsoft.dev.input.Input;
 import atomixsoft.dev.platform.Window;
 
 import atomixsoft.dev.world.World;
+import atomixsoft.dev.world.WorldProperties;
+import atomixsoft.dev.world.WorldSeed;
 import atomixsoft.dev.world.block.Blocks;
 import atomixsoft.dev.world.chunk.ChunkPosition;
 import atomixsoft.dev.world.gen.NoiseTerrainGenerator;
 import atomixsoft.dev.world.gen.TerrainGenerationPresets;
+import atomixsoft.dev.world.gen.TerrainPresetId;
 import atomixsoft.dev.world.gen.WorldGenerator;
 import atomixsoft.dev.world.render.WorldRenderer;
 
@@ -21,8 +24,6 @@ import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT;
 import static org.lwjgl.opengl.GL11.*;
 
 public final class VoxelGame {
-
-    private static final long TEST_SEED = ThreadLocalRandom.current().nextLong();
 
     private Window m_Window;
     private Shader m_Shader;
@@ -71,10 +72,11 @@ public final class VoxelGame {
     }
 
     private void initializeWorld() {
-        m_World = new World();
+        WorldProperties properties = new WorldProperties("Development World", WorldSeed.fromInput("Voxel-Rama Development"), TerrainPresetId.BLENDED, 1);
+        m_World = new World(properties);
 
-        m_WorldGen = new WorldGenerator(new NoiseTerrainGenerator(TEST_SEED, TerrainGenerationPresets.ROLLING_HILLS));
-        m_WorldGen.generateRegion(m_World, -2, 2, -1, 1, -2, 2);
+        m_WorldGen = new WorldGenerator(new NoiseTerrainGenerator(properties));
+        m_WorldGen.generateRegion(m_World, -2, 2, 0, 1, -2, 2);
 
         m_Renderer = new WorldRenderer(m_World);
         m_Renderer.update();
