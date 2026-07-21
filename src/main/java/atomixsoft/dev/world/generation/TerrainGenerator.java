@@ -1,4 +1,4 @@
-package atomixsoft.dev.world.gen;
+package atomixsoft.dev.world.generation;
 
 import atomixsoft.dev.world.World;
 import atomixsoft.dev.world.chunk.ChunkPosition;

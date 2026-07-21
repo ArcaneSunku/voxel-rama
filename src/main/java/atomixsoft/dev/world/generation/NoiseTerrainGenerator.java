@@ -1,15 +1,13 @@
-package atomixsoft.dev.world.gen;
+package atomixsoft.dev.world.generation;
 
-import atomixsoft.dev.noise.NoiseSampler2D;
-import atomixsoft.dev.noise.NoiseSamplers;
 import atomixsoft.dev.world.World;
 import atomixsoft.dev.world.WorldProperties;
 import atomixsoft.dev.world.block.Block;
 import atomixsoft.dev.world.block.Blocks;
 import atomixsoft.dev.world.chunk.Chunk;
 import atomixsoft.dev.world.chunk.ChunkPosition;
-import atomixsoft.dev.world.gen.shape.TerrainShape;
-import atomixsoft.dev.world.gen.shape.TerrainShapeFactory;
+import atomixsoft.dev.world.generation.shape.TerrainShape;
+import atomixsoft.dev.world.generation.shape.TerrainShapeFactory;
 
 public final class NoiseTerrainGenerator implements TerrainGenerator {
 

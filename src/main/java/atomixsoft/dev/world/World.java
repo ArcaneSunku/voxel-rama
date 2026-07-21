@@ -6,10 +6,7 @@ import atomixsoft.dev.world.block.Blocks;
 import atomixsoft.dev.world.chunk.Chunk;
 import atomixsoft.dev.world.chunk.ChunkPosition;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class World {
 
@@ -74,19 +71,20 @@ public class World {
         markNeighborMeshesDirty(position);
     }
 
-    public Chunk removeChunk(int chunkX, int chunkY, int chunkZ) {
+    public boolean removeChunk(int chunkX, int chunkY, int chunkZ) {
         return removeChunk(new ChunkPosition(chunkX, chunkY, chunkZ));
     }
 
-    public Chunk removeChunk(ChunkPosition position) {
+    public boolean removeChunk(ChunkPosition position) {
         if (position == null)
             throw new IllegalArgumentException("Chunk position cannot be null.");
 
         Chunk removedChunk = m_Chunks.remove(position);
-        if (removedChunk != null)
-            markNeighborMeshesDirty(position);
+        if (removedChunk == null)
+            return false;
 
-        return removedChunk;
+        markNeighborMeshesDirty(position);
+        return true;
     }
 
     public Chunk getChunk(int chunkX, int chunkY, int chunkZ) {
@@ -129,6 +127,10 @@ public class World {
 
     public Map<ChunkPosition, Chunk> getChunks() {
         return Collections.unmodifiableMap(m_Chunks);
+    }
+
+    public Set<ChunkPosition> getChunkPositions() {
+        return Set.copyOf(m_Chunks.keySet());
     }
 
     public Collection<Chunk> getChunkValues() {

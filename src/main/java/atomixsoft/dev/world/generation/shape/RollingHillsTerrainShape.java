@@ -1,8 +1,8 @@
-package atomixsoft.dev.world.gen.shape;
+package atomixsoft.dev.world.generation.shape;
 
 import atomixsoft.dev.noise.NoiseSampler2D;
 
-public final class MountainTerrainShape implements TerrainShape {
+public final class RollingHillsTerrainShape implements TerrainShape {
 
     private final int m_BaseHeight;
     private final int m_TerrainHeightRange;
@@ -11,7 +11,7 @@ public final class MountainTerrainShape implements TerrainShape {
     private final NoiseSampler2D m_TerrainNoise;
     private final NoiseSampler2D m_DetailNoise;
 
-    public MountainTerrainShape(int baseHeight, int terrainHeightRange, int detailHeightRange, NoiseSampler2D terrainNoise, NoiseSampler2D detailNoise) {
+    public RollingHillsTerrainShape(int baseHeight, int terrainHeightRange, int detailHeightRange, NoiseSampler2D terrainNoise, NoiseSampler2D detailNoise) {
         if (terrainHeightRange < 0)
             throw new IllegalArgumentException("Terrain height range cannot be negative.");
 
@@ -37,14 +37,10 @@ public final class MountainTerrainShape implements TerrainShape {
         float terrainSample = m_TerrainNoise.sample(worldX, worldZ);
         float detailSample = m_DetailNoise.sample(worldX, worldZ);
 
-        float ridge = 1.0f - Math.abs(terrainSample);
-        float shapedRidge = ridge * ridge;
-
-        int mountainHeight = Math.round(shapedRidge * m_TerrainHeightRange);
+        int terrainHeight = Math.round(terrainSample * m_TerrainHeightRange);
         int detailHeight = Math.round(detailSample * m_DetailHeightRange);
-        int mountainBase = m_BaseHeight - Math.max(1, m_TerrainHeightRange / 4);
 
-        return mountainBase + mountainHeight + detailHeight;
+        return m_BaseHeight + terrainHeight + detailHeight;
     }
 
 }

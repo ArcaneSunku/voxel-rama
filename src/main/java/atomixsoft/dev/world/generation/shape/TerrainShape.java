@@ -1,4 +1,4 @@
-package atomixsoft.dev.world.gen.shape;
+package atomixsoft.dev.world.generation.shape;
 
 @FunctionalInterface
 public interface TerrainShape {

@@ -1,6 +1,6 @@
 package atomixsoft.dev.world;
 
-import atomixsoft.dev.world.gen.TerrainPresetId;
+import atomixsoft.dev.world.generation.TerrainPresetId;
 
 public record WorldProperties(String name, WorldSeed seed, TerrainPresetId terrainPreset, int generatorVersion) {
 

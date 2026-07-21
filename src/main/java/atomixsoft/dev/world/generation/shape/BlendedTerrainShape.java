@@ -1,4 +1,4 @@
-package atomixsoft.dev.world.gen.shape;
+package atomixsoft.dev.world.generation.shape;
 
 import atomixsoft.dev.noise.NoiseSampler2D;
 

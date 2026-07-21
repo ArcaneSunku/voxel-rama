@@ -1,8 +1,8 @@
-package atomixsoft.dev.world.gen.shape;
+package atomixsoft.dev.world.generation.shape;
 
 import atomixsoft.dev.noise.NoiseSampler2D;
 import atomixsoft.dev.noise.NoiseSamplers;
-import atomixsoft.dev.world.gen.TerrainGenerationSettings;
+import atomixsoft.dev.world.generation.TerrainGenerationSettings;
 
 public final class TerrainShapeFactory {
 

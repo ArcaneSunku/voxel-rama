@@ -4,23 +4,19 @@ import atomixsoft.dev.graphics.Camera;
 import atomixsoft.dev.graphics.CameraController;
 import atomixsoft.dev.graphics.Shader;
 
-import atomixsoft.dev.input.Input;
 import atomixsoft.dev.platform.Window;
 
 import atomixsoft.dev.world.World;
 import atomixsoft.dev.world.WorldProperties;
 import atomixsoft.dev.world.WorldSeed;
 import atomixsoft.dev.world.block.Blocks;
-import atomixsoft.dev.world.chunk.ChunkPosition;
-import atomixsoft.dev.world.gen.NoiseTerrainGenerator;
-import atomixsoft.dev.world.gen.TerrainGenerationPresets;
-import atomixsoft.dev.world.gen.TerrainPresetId;
-import atomixsoft.dev.world.gen.WorldGenerator;
+import atomixsoft.dev.world.generation.NoiseTerrainGenerator;
+import atomixsoft.dev.world.generation.TerrainPresetId;
+import atomixsoft.dev.world.generation.WorldGenerator;
 import atomixsoft.dev.world.render.WorldRenderer;
+import atomixsoft.dev.world.streaming.ChunkStreamingController;
+import atomixsoft.dev.world.streaming.ChunkStreamingPresets;
 
-import java.util.concurrent.ThreadLocalRandom;
-
-import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT;
 import static org.lwjgl.opengl.GL11.*;
 
 public final class VoxelGame {
@@ -32,6 +28,8 @@ public final class VoxelGame {
     private CameraController m_CamController;
 
     private World m_World;
+    private ChunkStreamingController m_ChunkStream;
+
     private WorldGenerator m_WorldGen;
     private WorldRenderer m_Renderer;
 
@@ -72,11 +70,13 @@ public final class VoxelGame {
     }
 
     private void initializeWorld() {
-        WorldProperties properties = new WorldProperties("Development World", WorldSeed.fromInput("Voxel-Rama Development"), TerrainPresetId.BLENDED, 1);
-        m_World = new World(properties);
+        WorldProperties properties = new WorldProperties("Development World", WorldSeed.fromInput("Voxel-Rama Development"), TerrainPresetId.MOUNTAINS, 1);
 
+        m_World = new World(properties);
         m_WorldGen = new WorldGenerator(new NoiseTerrainGenerator(properties));
-        m_WorldGen.generateRegion(m_World, -2, 2, 0, 1, -2, 2);
+
+        m_ChunkStream = new ChunkStreamingController(m_World, m_WorldGen, ChunkStreamingPresets.DEVELOPMENT);
+        m_ChunkStream.prepareInitialArea(m_Camera.getPosition().x, m_Camera.getPosition().z);
 
         m_Renderer = new WorldRenderer(m_World);
         m_Renderer.update();
@@ -93,6 +93,8 @@ public final class VoxelGame {
 
     public void update(double delta) {
         validate();
+
+        m_ChunkStream.update(m_Camera.getPosition().x, m_Camera.getPosition().z);
         m_Renderer.update();
     }
 
@@ -116,7 +118,9 @@ public final class VoxelGame {
         m_Initialized = false;
         m_CamController = null;
 
+        m_ChunkStream = null;
         disposeWorld();
+
         Blocks.Dispose();
 
         IO.println("Voxel-Rama disposed!");

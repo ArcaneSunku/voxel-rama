@@ -1,7 +1,7 @@
-package atomixsoft.dev.world.gen;
+package atomixsoft.dev.world.generation;
 
 import atomixsoft.dev.noise.FractalNoiseSettings;
-import atomixsoft.dev.world.gen.shape.TerrainShapeType;
+import atomixsoft.dev.world.generation.shape.TerrainShapeType;
 
 public final class TerrainGenerationPresets {
 

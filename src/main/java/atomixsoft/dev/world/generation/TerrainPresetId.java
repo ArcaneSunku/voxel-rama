@@ -1,4 +1,4 @@
-package atomixsoft.dev.world.gen;
+package atomixsoft.dev.world.generation;
 
 public enum TerrainPresetId {
 
