@@ -12,6 +12,8 @@ import atomixsoft.dev.world.block.Blocks;
 import atomixsoft.dev.world.chunk.*;
 import atomixsoft.dev.world.chunk.mesh.ChunkMeshData;
 import atomixsoft.dev.world.chunk.mesh.ChunkMesher;
+import atomixsoft.dev.world.gen.SimpleTerrainGenerator;
+import atomixsoft.dev.world.gen.WorldGenerator;
 import atomixsoft.dev.world.render.ChunkModel;
 import atomixsoft.dev.world.render.WorldRenderer;
 import org.joml.Matrix4f;
@@ -32,6 +34,7 @@ public final class VoxelGame {
     private CameraController m_CamController;
 
     private World m_World;
+    private WorldGenerator m_WorldGen;
     private WorldRenderer m_Renderer;
 
     private boolean m_Initialized;
@@ -49,7 +52,8 @@ public final class VoxelGame {
         Blocks.Initialize();
 
         m_Camera = new Camera(65.0f, 0.01f, 1000.0f);
-        m_Camera.setPosition(8.0f, 8.0f, 24.0f);
+        m_Camera.setPosition(8.0f, 18.0f, 30.0f);
+        m_Camera.setPitch(-25.0f);
 
         m_Camera.updateProjection(window.getFramebufferWidth(), window.getFramebufferHeight());
         m_Camera.updateView();
@@ -72,32 +76,11 @@ public final class VoxelGame {
     private void initializeWorld() {
         m_World = new World();
 
-        createTestChunk(new ChunkPosition(1, 0, 0));
-        createTestChunk(new ChunkPosition(0, 0, 1));
-
-        createTestChunk(new ChunkPosition(0, 0, 0));
-
-        createTestChunk(new ChunkPosition(-1, 0, 0));
-        createTestChunk(new ChunkPosition(0, 0, -1));
+        m_WorldGen = new WorldGenerator(new SimpleTerrainGenerator());
+        m_WorldGen.generateSquare(m_World, 0, 0, 0, 2);
 
         m_Renderer = new WorldRenderer(m_World);
         m_Renderer.update();
-    }
-
-    private void createTestChunk(ChunkPosition position) {
-        m_World.createChunk(position);
-
-        int worldOriginX = position.getWorldBlockOriginX();
-        int worldOriginY = position.getWorldBlockOriginY();
-        int worldOriginZ = position.getWorldBlockOriginZ();
-
-        for (int z = 0; z < Chunk.SIZE; z++) {
-            for (int x = 0; x < Chunk.SIZE; x++) {
-                m_World.setBlock(worldOriginX + x, worldOriginY, worldOriginZ + z, Blocks.STONE);
-                m_World.setBlock(worldOriginX + x, worldOriginY + 1, worldOriginZ + z, Blocks.DIRT);
-                m_World.setBlock(worldOriginX + x, worldOriginY + 2, worldOriginZ + z, Blocks.GRASS);
-            }
-        }
     }
 
     public void processInput(double delta) {
@@ -143,6 +126,8 @@ public final class VoxelGame {
     private void disposeWorld() {
         m_Renderer.dispose();
         m_Renderer = null;
+
+        m_WorldGen = null;
 
         m_World.clear();
         m_World = null;
