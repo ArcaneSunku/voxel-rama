@@ -1,20 +1,47 @@
 package atomixsoft.dev.world.gen;
 
+import atomixsoft.dev.noise.NoiseSampler2D;
+import atomixsoft.dev.noise.NoiseSamplers;
 import atomixsoft.dev.world.World;
 import atomixsoft.dev.world.block.Block;
 import atomixsoft.dev.world.block.Blocks;
 import atomixsoft.dev.world.chunk.Chunk;
 import atomixsoft.dev.world.chunk.ChunkPosition;
 
-public final class SimpleTerrainGenerator implements TerrainGenerator {
+public final class NoiseTerrainGenerator implements TerrainGenerator {
 
-    private static final int BASE_HEIGHT = 6;
-    private static final int DIRT_DEPTH = 3;
+    private final long m_Seed;
+    private final TerrainGenerationSettings m_Settings;
 
-    private static final double LARGE_HILL_FREQUENCY = 0.075;
-    private static final double SMALL_HILL_FREQUENCY = 0.165;
-    private static final double LARGE_HILL_AMPLITUDE = 3.0;
-    private static final double SMALL_HILL_AMPLITUDE = 1.5;
+    private final NoiseSampler2D m_HeightNoise;
+    private final NoiseSampler2D m_DetailNoise;
+
+    public NoiseTerrainGenerator(long seed) {
+        this(seed, TerrainGenerationPresets.ROLLING_HILLS);
+    }
+
+    public NoiseTerrainGenerator(long seed, TerrainGenerationSettings settings) {
+        if(settings == null)
+            throw new IllegalArgumentException("Settings cannot be null");
+
+        m_Seed = seed;
+        m_Settings = settings;
+
+        m_HeightNoise = NoiseSamplers.CreateTerrainHeight(deriveIntSeed(seed, 0x68BC21EBL), settings.terrainNoise());
+        m_DetailNoise = NoiseSamplers.CreateTerrainDetail(deriveIntSeed(seed, 0x02E5BE93L), settings.detailNoise());
+    }
+
+    private static int deriveIntSeed(long worldSeed, long salt) {
+        long value = worldSeed ^ salt;
+
+        value ^= value >>> 33;
+        value *= 0xFF51AFD7ED558CCDL;
+        value ^= value >>> 33;
+        value *= 0xC4CEB9FE1A85EC53L;
+        value ^= value >>> 33;
+
+        return Long.hashCode(value);
+    }
 
     @Override
     public void generateChunk(World world, ChunkPosition position) {
@@ -37,7 +64,9 @@ public final class SimpleTerrainGenerator implements TerrainGenerator {
         for (int localZ = 0; localZ < Chunk.SIZE; localZ++) {
             for (int localX = 0; localX < Chunk.SIZE; localX++) {
                 int worldX = worldOriginX + localX;
+
                 int worldZ = worldOriginZ + localZ;
+
                 int surfaceHeight = calculateSurfaceHeight(worldX, worldZ);
 
                 generateColumn(chunk, localX, localZ, worldOriginY, surfaceHeight);
@@ -48,11 +77,21 @@ public final class SimpleTerrainGenerator implements TerrainGenerator {
     }
 
     public int calculateSurfaceHeight(int worldX, int worldZ) {
-        double largeHills = Math.sin(worldX * LARGE_HILL_FREQUENCY) * LARGE_HILL_AMPLITUDE;
-        double crossingHills = Math.cos(worldZ * LARGE_HILL_FREQUENCY) * LARGE_HILL_AMPLITUDE;
-        double smallDetails = Math.sin((worldX + worldZ) * SMALL_HILL_FREQUENCY) * SMALL_HILL_AMPLITUDE;
+        float terrainNoise = m_HeightNoise.sample(worldX, worldZ);
+        float detailNoise = m_DetailNoise.sample(worldX, worldZ);
 
-        return BASE_HEIGHT + (int) Math.round(largeHills + crossingHills + smallDetails);
+        int terrainHeight = Math.round(terrainNoise * m_Settings.terrainHeightRange());
+        int detailHeight = Math.round(detailNoise * m_Settings.detailHeightRange());
+
+        return m_Settings.baseHeight() + terrainHeight + detailHeight;
+    }
+
+    public long getSeed() {
+        return m_Seed;
+    }
+
+    public TerrainGenerationSettings getSettings() {
+        return m_Settings;
     }
 
     private void generateColumn(Chunk chunk, int localX, int localZ, int worldOriginY, int surfaceHeight) {
@@ -71,9 +110,10 @@ public final class SimpleTerrainGenerator implements TerrainGenerator {
         if (worldY == surfaceHeight)
             return Blocks.GRASS;
 
-        if (worldY >= surfaceHeight - DIRT_DEPTH)
+        if (worldY >= surfaceHeight - m_Settings.dirtDepth())
             return Blocks.DIRT;
 
         return Blocks.STONE;
     }
+
 }

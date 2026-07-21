@@ -9,23 +9,20 @@ import atomixsoft.dev.platform.Window;
 
 import atomixsoft.dev.world.World;
 import atomixsoft.dev.world.block.Blocks;
-import atomixsoft.dev.world.chunk.*;
-import atomixsoft.dev.world.chunk.mesh.ChunkMeshData;
-import atomixsoft.dev.world.chunk.mesh.ChunkMesher;
-import atomixsoft.dev.world.gen.SimpleTerrainGenerator;
+import atomixsoft.dev.world.chunk.ChunkPosition;
+import atomixsoft.dev.world.gen.NoiseTerrainGenerator;
+import atomixsoft.dev.world.gen.TerrainGenerationPresets;
 import atomixsoft.dev.world.gen.WorldGenerator;
-import atomixsoft.dev.world.render.ChunkModel;
 import atomixsoft.dev.world.render.WorldRenderer;
-import org.joml.Matrix4f;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
-import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT;
 import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT;
 import static org.lwjgl.opengl.GL11.*;
 
 public final class VoxelGame {
+
+    private static final long TEST_SEED = ThreadLocalRandom.current().nextLong();
 
     private Window m_Window;
     private Shader m_Shader;
@@ -76,8 +73,8 @@ public final class VoxelGame {
     private void initializeWorld() {
         m_World = new World();
 
-        m_WorldGen = new WorldGenerator(new SimpleTerrainGenerator());
-        m_WorldGen.generateSquare(m_World, 0, 0, 0, 2);
+        m_WorldGen = new WorldGenerator(new NoiseTerrainGenerator(TEST_SEED, TerrainGenerationPresets.ROLLING_HILLS));
+        m_WorldGen.generateRegion(m_World, -2, 2, -1, 1, -2, 2);
 
         m_Renderer = new WorldRenderer(m_World);
         m_Renderer.update();
