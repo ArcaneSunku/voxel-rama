@@ -1,11 +1,13 @@
 package atomixsoft.dev.world.generation;
 
-import atomixsoft.dev.world.World;
 import atomixsoft.dev.world.WorldProperties;
+
 import atomixsoft.dev.world.block.Block;
 import atomixsoft.dev.world.block.Blocks;
+
 import atomixsoft.dev.world.chunk.Chunk;
 import atomixsoft.dev.world.chunk.ChunkPosition;
+
 import atomixsoft.dev.world.generation.shape.TerrainShape;
 import atomixsoft.dev.world.generation.shape.TerrainShapeFactory;
 
@@ -35,36 +37,37 @@ public final class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     @Override
-    public void generateChunk(World world, ChunkPosition position) {
-        if (world == null)
-            throw new IllegalArgumentException("World cannot be null.");
-
+    public Chunk generateChunk(ChunkPosition position) {
         if (position == null)
             throw new IllegalArgumentException("Chunk position cannot be null.");
 
-        Chunk chunk;
-        if (world.hasChunk(position))
-            chunk = world.requireChunk(position);
-        else
-            chunk = world.createChunk(position);
+        Chunk chunk = new Chunk();
 
-        int worldOriginX = position.getWorldBlockOriginX();
-        int worldOriginY = position.getWorldBlockOriginY();
-        int worldOriginZ = position.getWorldBlockOriginZ();
+        int chunkWorldX = position.x() * Chunk.SIZE;
+        int chunkWorldY = position.y() * Chunk.SIZE;
+        int chunkWorldZ = position.z() * Chunk.SIZE;
 
         for (int localZ = 0; localZ < Chunk.SIZE; localZ++) {
+            int worldZ = chunkWorldZ + localZ;
+
             for (int localX = 0; localX < Chunk.SIZE; localX++) {
-                int worldX = worldOriginX + localX;
-
-                int worldZ = worldOriginZ + localZ;
-
+                int worldX = chunkWorldX + localX;
                 int surfaceHeight = calculateSurfaceHeight(worldX, worldZ);
 
-                generateColumn(chunk, localX, localZ, worldOriginY, surfaceHeight);
+                for(int localY = 0; localY < Chunk.SIZE; localY++) {
+                    int worldY = chunkWorldY + localY;
+
+                    short blockId = selectBlock(worldY, surfaceHeight).getId();
+                    if(blockId == Blocks.AIR.getId())
+                        continue;
+
+                    chunk.setBlockId(localX, localY, localZ, blockId);
+                }
             }
         }
 
         chunk.markMesh(true);
+        return chunk;
     }
 
     public int calculateSurfaceHeight(int worldX, int worldZ) {

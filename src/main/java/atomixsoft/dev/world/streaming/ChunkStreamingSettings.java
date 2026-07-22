@@ -1,6 +1,8 @@
 package atomixsoft.dev.world.streaming;
 
-public record ChunkStreamingSettings(int loadRadius, int unloadRadius, int minChunkY, int maxChunkY, int chunksGeneratedPerFrame) {
+public record ChunkStreamingSettings(int loadRadius, int unloadRadius, int minChunkY, int maxChunkY,
+                                     int generationWorkerCount, int maxInFlightChunks, int submissionsPerFrame,
+                                     int integrationsPerFrame) {
 
     public ChunkStreamingSettings {
         if (loadRadius < 0)
@@ -12,8 +14,17 @@ public record ChunkStreamingSettings(int loadRadius, int unloadRadius, int minCh
         if (minChunkY > maxChunkY)
             throw new IllegalArgumentException("Minimum chunk Y cannot exceed maximum chunk Y.");
 
-        if (chunksGeneratedPerFrame < 1)
-            throw new IllegalArgumentException("Chunks generated per frame must be at least one.");
+        if (generationWorkerCount < 1)
+            throw new IllegalArgumentException("Generation worker count must be at least one.");
+
+        if (maxInFlightChunks < generationWorkerCount)
+            throw new IllegalArgumentException("Maximum in-flight chunks cannot be smaller than the worker count.");
+
+        if (submissionsPerFrame < 1)
+            throw new IllegalArgumentException("Submissions per frame must be at least one.");
+
+        if (integrationsPerFrame < 1)
+            throw new IllegalArgumentException("Integrations per frame must be at least one.");
     }
 
     public int loadedDiameter() {

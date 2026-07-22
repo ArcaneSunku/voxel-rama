@@ -1,6 +1,7 @@
 package atomixsoft.dev.world.generation;
 
 import atomixsoft.dev.world.World;
+import atomixsoft.dev.world.chunk.Chunk;
 import atomixsoft.dev.world.chunk.ChunkPosition;
 
 public class WorldGenerator {
@@ -14,17 +15,11 @@ public class WorldGenerator {
         m_TerrainGen = terrainGen;
     }
 
-    public void generateChunk(World world, ChunkPosition position) {
-        if (world == null)
-            throw new IllegalArgumentException("World cannot be null.");
-
+    public Chunk generateChunk(ChunkPosition position) {
         if (position == null)
             throw new IllegalArgumentException("Chunk position cannot be null.");
 
-        if (world.hasChunk(position))
-            return;
-
-        m_TerrainGen.generateChunk(world, position);
+        return m_TerrainGen.generateChunk(position);
     }
 
     public void generateRegion(World world, int minimumChunkX, int maximumChunkX, int minimumChunkY, int maximumChunkY, int minimumChunkZ, int maximumChunkZ) {
@@ -38,7 +33,10 @@ public class WorldGenerator {
         for (int chunkY = minimumChunkY; chunkY <= maximumChunkY; chunkY++) {
             for (int chunkZ = minimumChunkZ; chunkZ <= maximumChunkZ; chunkZ++) {
                 for (int chunkX = minimumChunkX; chunkX <= maximumChunkX; chunkX++) {
-                    m_TerrainGen.generateChunk(world, new ChunkPosition(chunkX, chunkY, chunkZ));
+                    ChunkPosition pos = new ChunkPosition(chunkX, chunkY, chunkZ);
+                    Chunk chunk = m_TerrainGen.generateChunk(pos);
+
+                    world.addChunk(pos, chunk);
                 }
             }
         }

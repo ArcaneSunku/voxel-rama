@@ -9,11 +9,14 @@ import java.util.HashSet;
 import java.util.PriorityQueue;
 import java.util.Set;
 
-public final class ChunkStreamingController {
+public final class ChunkStreamingController implements AutoCloseable {
 
     private final World m_World;
     private final WorldGenerator m_WorldGenerator;
     private final ChunkStreamingSettings m_Settings;
+
+    private final AsyncChunkGenerator m_AsyncGenerator;
+    private final Set<ChunkPosition> m_InFlightPositions;
 
     private final PriorityQueue<ChunkGenerationRequest> m_GenerationQueue;
     private final Set<ChunkPosition> m_QueuedPositions;
@@ -37,6 +40,9 @@ public final class ChunkStreamingController {
         m_WorldGenerator = worldGenerator;
         m_Settings = settings;
 
+        m_AsyncGenerator = new AsyncChunkGenerator(m_WorldGenerator, settings.generationWorkerCount());
+        m_InFlightPositions = new HashSet<>();
+
         m_GenerationQueue = new PriorityQueue<>();
         m_QueuedPositions = new HashSet<>();
     }
@@ -50,12 +56,16 @@ public final class ChunkStreamingController {
         return (int) Math.min(Integer.MAX_VALUE, Math.abs(difference));
     }
 
+    private static void reportGenerationFailure(ChunkGenerationResult result) {
+        System.err.println("Failed to generate chunk " + result.position());
+        result.failure().printStackTrace(System.err);
+    }
+
     public void update(float worldX, float worldZ) {
         if (!Float.isFinite(worldX) || !Float.isFinite(worldZ))
             throw new IllegalArgumentException("Streaming position must be finite.");
 
         int centerChunkX = worldToChunkCoordinate(worldX);
-
         int centerChunkZ = worldToChunkCoordinate(worldZ);
 
         boolean centerChanged = !m_Initialized || centerChunkX != m_CenterChunkX || centerChunkZ != m_CenterChunkZ;
@@ -69,12 +79,25 @@ public final class ChunkStreamingController {
             unloadDistantChunks();
         }
 
-        processGenerationQueue();
+        integrateCompletedChunks();
+        submitGenerationRequests();
+    }
+
+    @Override
+    public void close() throws Exception {
+        m_GenerationQueue.clear();
+        m_QueuedPositions.clear();
+        m_InFlightPositions.clear();
+
+        m_AsyncGenerator.close();
     }
 
     public void prepareInitialArea(float worldX, float worldZ) {
         if (!Float.isFinite(worldX) || !Float.isFinite(worldZ))
             throw new IllegalArgumentException("Streaming position must be finite.");
+
+        if(!m_InFlightPositions.isEmpty())
+            throw new IllegalStateException("Cannot synchronously prepare terrain while generation jobs are active!");
 
         m_CenterChunkX = worldToChunkCoordinate(worldX);
         m_CenterChunkZ = worldToChunkCoordinate(worldZ);
@@ -84,8 +107,20 @@ public final class ChunkStreamingController {
         rebuildGenerationQueue();
         unloadDistantChunks();
 
-        while (!m_GenerationQueue.isEmpty())
-            processGenerationQueue();
+        while (!m_GenerationQueue.isEmpty()) {
+            ChunkGenerationRequest request = m_GenerationQueue.poll();
+            ChunkPosition position = request.position();
+
+            m_QueuedPositions.remove(position);
+            if (!isInsideLoadRadius(position))
+                continue;
+
+            if (m_World.hasChunk(position))
+                continue;
+
+            Chunk chunk = m_WorldGenerator.generateChunk(position);
+            m_World.addChunk(position, chunk);
+        }
     }
 
     public void refresh() {
@@ -113,11 +148,17 @@ public final class ChunkStreamingController {
     }
 
     public boolean hasPendingGeneration() {
-        return !m_GenerationQueue.isEmpty();
+        return !m_GenerationQueue.isEmpty()
+                || !m_InFlightPositions.isEmpty()
+                || m_AsyncGenerator.hasCompletedResults();
     }
 
     public boolean isInitialAreaReady() {
-        return m_Initialized && m_GenerationQueue.isEmpty();
+        return m_Initialized && !hasPendingGeneration();
+    }
+
+    public int getInFlightChunkCount() {
+        return m_InFlightPositions.size();
     }
 
     private void rebuildGenerationQueue() {
@@ -137,6 +178,9 @@ public final class ChunkStreamingController {
         for (int chunkY = m_Settings.minChunkY(); chunkY <= m_Settings.maxChunkY(); chunkY++) {
             ChunkPosition position = new ChunkPosition(chunkX, chunkY, chunkZ);
             if (m_World.hasChunk(position))
+                continue;
+
+            if(m_InFlightPositions.contains(position))
                 continue;
 
             if (!m_QueuedPositions.add(position))
@@ -161,9 +205,9 @@ public final class ChunkStreamingController {
         return horizontalPriority * verticalLayerCount + verticalOffset;
     }
 
-    private void processGenerationQueue() {
-        int remainingBudget = m_Settings.chunksGeneratedPerFrame();
-        while (remainingBudget > 0 && !m_GenerationQueue.isEmpty()) {
+    private void submitGenerationRequests() {
+        int remainingSubmissions = m_Settings.submissionsPerFrame();
+        while (remainingSubmissions > 0 && !m_GenerationQueue.isEmpty() && m_InFlightPositions.size() < m_Settings.maxInFlightChunks()) {
             ChunkGenerationRequest request = m_GenerationQueue.poll();
             ChunkPosition position = request.position();
 
@@ -174,8 +218,48 @@ public final class ChunkStreamingController {
             if (m_World.hasChunk(position))
                 continue;
 
-            m_WorldGenerator.generateChunk(m_World, position);
-            remainingBudget--;
+            if(!m_InFlightPositions.add(position))
+                continue;
+
+            try {
+                m_AsyncGenerator.submit(position);
+                remainingSubmissions--;
+            } catch (RuntimeException e) {
+                m_InFlightPositions.remove(position);
+                throw e;
+            }
+        }
+    }
+
+    private void integrateCompletedChunks() {
+        int remainingIntegrations = m_Settings.integrationsPerFrame();
+        while (remainingIntegrations > 0) {
+            ChunkGenerationResult result = m_AsyncGenerator.pollCompleted();
+            if (result == null)
+                return;
+
+            ChunkPosition position = result.position();
+            m_InFlightPositions.remove(position);
+
+            if (!result.wasSuccessful()) {
+                reportGenerationFailure(result);
+
+                remainingIntegrations--;
+                continue;
+            }
+
+            if (!isInsideLoadRadius(position)) {
+                remainingIntegrations--;
+                continue;
+            }
+
+            if (m_World.hasChunk(position)) {
+                remainingIntegrations--;
+                continue;
+            }
+
+            m_World.addChunk(position, result.chunk());
+            remainingIntegrations--;
         }
     }
 

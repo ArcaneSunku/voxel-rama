@@ -70,7 +70,7 @@ public final class VoxelGame {
     }
 
     private void initializeWorld() {
-        WorldProperties properties = new WorldProperties("Development World", WorldSeed.fromInput("Voxel-Rama Development"), TerrainPresetId.MOUNTAINS, 1);
+        WorldProperties properties = new WorldProperties("Development World", WorldSeed.fromInput("Voxel-Rama Development"), TerrainPresetId.BLENDED, 1);
 
         m_World = new World(properties);
         m_WorldGen = new WorldGenerator(new NoiseTerrainGenerator(properties));
@@ -118,7 +118,6 @@ public final class VoxelGame {
         m_Initialized = false;
         m_CamController = null;
 
-        m_ChunkStream = null;
         disposeWorld();
 
         Blocks.Dispose();
@@ -127,6 +126,14 @@ public final class VoxelGame {
     }
 
     private void disposeWorld() {
+        try {
+            m_ChunkStream.close();
+            m_ChunkStream = null;
+        } catch(Exception e) {
+            System.err.println("Error closing chunk stream!\n" + e.getMessage());
+            throw new RuntimeException();
+        }
+
         m_Renderer.dispose();
         m_Renderer = null;
 
