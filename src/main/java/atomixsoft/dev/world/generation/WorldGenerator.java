@@ -1,18 +1,26 @@
 package atomixsoft.dev.world.generation;
 
 import atomixsoft.dev.world.World;
+import atomixsoft.dev.world.biome.BiomeDefinition;
+import atomixsoft.dev.world.biome.BiomeSampler;
+import atomixsoft.dev.world.biome.ClimateSample;
 import atomixsoft.dev.world.chunk.Chunk;
 import atomixsoft.dev.world.chunk.ChunkPosition;
 
 public class WorldGenerator {
 
     private final TerrainGenerator m_TerrainGen;
+    private final BiomeSampler m_BiomeSampler;
 
-    public WorldGenerator(TerrainGenerator terrainGen) {
+    public WorldGenerator(TerrainGenerator terrainGen, BiomeSampler biomeSampler) {
         if (terrainGen == null)
             throw new IllegalArgumentException("Terrain generator cannot be null.");
 
+        if(biomeSampler == null)
+            throw new IllegalArgumentException("Biome sampler cannot be null.");
+
         m_TerrainGen = terrainGen;
+        m_BiomeSampler = biomeSampler;
     }
 
     public Chunk generateChunk(ChunkPosition position) {
@@ -51,6 +59,14 @@ public class WorldGenerator {
             throw new IllegalArgumentException("Generation radius cannot be negative.");
 
         generateHorizontalRegion(world, centerChunkX - radius, centerChunkX + radius, chunkY, centerChunkZ - radius, centerChunkZ + radius);
+    }
+
+    public ClimateSample sampleClimate(int worldX, int worldZ) {
+        return m_BiomeSampler.sampleClimate(worldX, worldZ);
+    }
+
+    public BiomeDefinition getBiome(int worldX, int worldZ) {
+        return m_BiomeSampler.sampleBiome(worldX, worldZ);
     }
 
     private void validateRange(int minimum, int maximum, String axisName) {

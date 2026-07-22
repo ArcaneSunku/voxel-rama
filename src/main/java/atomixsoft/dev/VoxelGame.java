@@ -9,6 +9,10 @@ import atomixsoft.dev.platform.Window;
 import atomixsoft.dev.world.World;
 import atomixsoft.dev.world.WorldProperties;
 import atomixsoft.dev.world.WorldSeed;
+import atomixsoft.dev.world.biome.BiomeDefinition;
+import atomixsoft.dev.world.biome.BiomeId;
+import atomixsoft.dev.world.biome.BiomeSamplers;
+import atomixsoft.dev.world.biome.ClimateSample;
 import atomixsoft.dev.world.block.Blocks;
 import atomixsoft.dev.world.generation.NoiseTerrainGenerator;
 import atomixsoft.dev.world.generation.TerrainPresetId;
@@ -32,6 +36,8 @@ public final class VoxelGame {
 
     private WorldGenerator m_WorldGen;
     private WorldRenderer m_Renderer;
+
+    private BiomeId m_LastReportedBiomeId;
 
     private boolean m_Initialized;
 
@@ -73,7 +79,7 @@ public final class VoxelGame {
         WorldProperties properties = new WorldProperties("Development World", WorldSeed.fromInput("Voxel-Rama Development"), TerrainPresetId.BLENDED, 1);
 
         m_World = new World(properties);
-        m_WorldGen = new WorldGenerator(new NoiseTerrainGenerator(properties));
+        m_WorldGen = new WorldGenerator(new NoiseTerrainGenerator(properties), BiomeSamplers.createDefault(properties.seedValue()));
 
         m_ChunkStream = new ChunkStreamingController(m_World, m_WorldGen, ChunkStreamingPresets.DEVELOPMENT);
         m_ChunkStream.prepareInitialArea(m_Camera.getPosition().x, m_Camera.getPosition().z);
